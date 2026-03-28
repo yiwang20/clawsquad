@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Claw / squad icon: three figures in a semicircle -->
+  <circle cx="16" cy="16" r="15" fill="#1a1a2e" stroke="#6c63ff" stroke-width="1.5"/>
+  <!-- Center agent -->
+  <circle cx="16" cy="12" r="3" fill="#6c63ff"/>
+  <path d="M10 24c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#6c63ff" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Left agent -->
+  <circle cx="8" cy="14" r="2.2" fill="#a29bfe"/>
+  <path d="M3.5 25c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" stroke="#a29bfe" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Right agent -->
+  <circle cx="24" cy="14" r="2.2" fill="#a29bfe"/>
+  <path d="M19.5 25c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" stroke="#a29bfe" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

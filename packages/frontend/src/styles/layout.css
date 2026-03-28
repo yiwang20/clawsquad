@@ -1,0 +1,253 @@
+/* ============================================================================
+   ClawSquad — Layout Shell
+
+   Responsive layout: fixed header with breadcrumbs, scrollable main content.
+   No sidebar for V1 — flat Home > Squad > Agent navigation.
+   Desktop-first (product spec: "optimized for the screen where you do real
+   work"), but gracefully adapts down to tablet.
+   ============================================================================ */
+
+/* ─── App Shell ─────────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ─── Header ────────────────────────────────────────────────────────────────── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  height: var(--header-height);
+  padding: 0 var(--content-padding);
+  background-color: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border-default);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  /* Slight transparency for the blur to work on scroll */
+  background-color: rgba(15, 17, 23, 0.85);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0; /* allow truncation */
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Logo / wordmark */
+.header-logo {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.header-logo-accent {
+  color: var(--color-accent);
+}
+
+/* Breadcrumbs live in the header, after the logo */
+.header .breadcrumbs {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border-subtle);
+  min-width: 0;
+}
+
+/* ─── Main Content ──────────────────────────────────────────────────────────── */
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--content-padding);
+}
+
+/* ─── Page Header ─────────────────────────────────────────────────────────────
+   Title + description + action buttons at the top of a page.
+*/
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.page-header-content {
+  min-width: 0;
+}
+
+.page-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+}
+
+.page-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-1);
+  line-height: var(--leading-normal);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ─── Content Grids ─────────────────────────────────────────────────────────── */
+
+/* Squad list on home page */
+.squad-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Agent cards on squad detail page */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  gap: var(--space-4);
+}
+
+/* ─── Split Layout (Agent Detail) ─────────────────────────────────────────────
+   Full-height layout: scrollable output feed + fixed prompt input at bottom.
+*/
+
+.agent-detail-layout {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height) - var(--space-6) * 2);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.agent-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.agent-detail-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  scroll-behavior: smooth;
+}
+
+/* Prompt input is pinned at the bottom via .prompt-input-container (components.css) */
+
+/* ─── Squad Detail Header ─────────────────────────────────────────────────────
+   Mission summary + controls at top of squad detail page
+*/
+
+.squad-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.squad-detail-mission {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 60ch;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  :root {
+    --content-padding: var(--space-4);
+  }
+
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .page-actions {
+    width: 100%;
+  }
+
+  .page-actions .btn {
+    flex: 1;
+  }
+
+  .header .breadcrumbs {
+    display: none;
+  }
+
+  .quick-start-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --content-padding: var(--space-3);
+  }
+
+  .header-logo {
+    font-size: var(--text-sm);
+  }
+}
+
+/* ─── Utility: Scroll Shadows ─────────────────────────────────────────────────
+   Subtle shadow at top/bottom of scrollable areas to indicate overflow.
+*/
+
+.scroll-shadow-top {
+  box-shadow: inset 0 8px 8px -8px rgba(0, 0, 0, 0.4);
+}
+
+.scroll-shadow-bottom {
+  box-shadow: inset 0 -8px 8px -8px rgba(0, 0, 0, 0.4);
+}
+
+.scroll-shadow-both {
+  box-shadow:
+    inset 0 8px 8px -8px rgba(0, 0, 0, 0.4),
+    inset 0 -8px 8px -8px rgba(0, 0, 0, 0.4);
+}

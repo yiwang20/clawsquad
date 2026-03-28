@@ -1,0 +1,306 @@
+/* ============================================================================
+   ClawSquad — Global Design Tokens & Reset
+
+   Dark theme, mission-control aesthetic. Professional and information-dense,
+   but clean enough for non-technical users. All design decisions flow from
+   these variables — components should never use raw color/spacing values.
+   ============================================================================ */
+
+/* ─── CSS Reset ─────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Allow inline SVGs inside interactive elements */
+button svg,
+a svg,
+.btn svg,
+.status-badge svg,
+.breadcrumbs svg,
+.prompt-send-btn svg,
+.prompt-abort-btn svg,
+.collapsible-trigger svg,
+.tool-block-header svg,
+.step-header svg {
+  display: inline-block;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* ─── Root Design Tokens ────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Color Palette ─────────────────────────────────────────────────────────
+     Built on a neutral blue-gray base. Accent colors are purposeful:
+     blue for action, green for success/ready, orange for caution, red for error.
+  */
+
+  /* Neutrals (blue-gray tinted for warmth) */
+  --color-gray-950: #0a0c10;
+  --color-gray-900: #0f1117;
+  --color-gray-850: #13151d;
+  --color-gray-800: #181b25;
+  --color-gray-750: #1e2130;
+  --color-gray-700: #252938;
+  --color-gray-600: #343a4d;
+  --color-gray-500: #4a5168;
+  --color-gray-400: #6b7280;
+  --color-gray-300: #9ca3af;
+  --color-gray-200: #c5c9d4;
+  --color-gray-100: #e2e4ea;
+  --color-gray-50:  #f0f1f5;
+
+  /* Blue — primary accent, actions, running states */
+  --color-blue-600: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #60a5fa;
+  --color-blue-300: #93bbfd;
+  --color-blue-200: #bfdbfe;
+  --color-blue-glow: rgba(59, 130, 246, 0.15);
+
+  /* Green — success, ready, waiting states */
+  --color-green-600: #16a34a;
+  --color-green-500: #22c55e;
+  --color-green-400: #4ade80;
+  --color-green-300: #86efac;
+  --color-green-glow: rgba(34, 197, 94, 0.15);
+
+  /* Orange — caution, stopped states */
+  --color-orange-600: #d97706;
+  --color-orange-500: #f59e0b;
+  --color-orange-400: #fbbf24;
+  --color-orange-300: #fcd34d;
+  --color-orange-glow: rgba(245, 158, 11, 0.12);
+
+  /* Red — error, danger */
+  --color-red-600: #dc2626;
+  --color-red-500: #ef4444;
+  --color-red-400: #f87171;
+  --color-red-300: #fca5a5;
+  --color-red-glow: rgba(239, 68, 68, 0.12);
+
+  /* Purple — decorative, model badges */
+  --color-purple-500: #a855f7;
+  --color-purple-400: #c084fc;
+
+  /* ── Semantic Colors ───────────────────────────────────────────────────────
+     Use these in components, not raw palette values.
+  */
+
+  /* Backgrounds */
+  --color-bg-base:      var(--color-gray-950);
+  --color-bg-surface:   var(--color-gray-900);
+  --color-bg-raised:    var(--color-gray-850);
+  --color-bg-elevated:  var(--color-gray-800);
+  --color-bg-overlay:   var(--color-gray-750);
+  --color-bg-hover:     var(--color-gray-700);
+  --color-bg-active:    var(--color-gray-600);
+  --color-bg-input:     var(--color-gray-850);
+
+  /* Text */
+  --color-text-primary:    var(--color-gray-100);
+  --color-text-secondary:  var(--color-gray-300);
+  --color-text-tertiary:   var(--color-gray-400);
+  --color-text-disabled:   var(--color-gray-500);
+  --color-text-inverse:    var(--color-gray-950);
+
+  /* Borders */
+  --color-border-default:  var(--color-gray-700);
+  --color-border-subtle:   var(--color-gray-750);
+  --color-border-strong:   var(--color-gray-600);
+  --color-border-focus:    var(--color-blue-500);
+
+  /* Accent */
+  --color-accent:          var(--color-blue-500);
+  --color-accent-hover:    var(--color-blue-400);
+  --color-accent-muted:    var(--color-blue-glow);
+
+  /* ── Typography ────────────────────────────────────────────────────────────
+     System font stack for speed. Monospace for code/output.
+  */
+  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                'Helvetica Neue', Arial, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code',
+                'Consolas', monospace;
+
+  /* Type scale (minor third — 1.2 ratio) */
+  --text-xs:    0.75rem;   /* 12px */
+  --text-sm:    0.875rem;  /* 14px — body default */
+  --text-base:  1rem;      /* 16px */
+  --text-md:    1.125rem;  /* 18px */
+  --text-lg:    1.25rem;   /* 20px */
+  --text-xl:    1.5rem;    /* 24px */
+  --text-2xl:   1.875rem;  /* 30px */
+  --text-3xl:   2.25rem;   /* 36px */
+
+  /* Font weights */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Line heights */
+  --leading-none:    1;
+  --leading-tight:   1.25;
+  --leading-snug:    1.375;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.625;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.01em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.025em;
+  --tracking-wider:   0.05em;
+
+  /* ── Spacing ───────────────────────────────────────────────────────────────
+     4px base unit. Every spacing value is a multiple of 4.
+  */
+  --space-0:   0;
+  --space-0.5: 0.125rem;  /* 2px  */
+  --space-1:   0.25rem;   /* 4px  */
+  --space-1.5: 0.375rem;  /* 6px  */
+  --space-2:   0.5rem;    /* 8px  */
+  --space-3:   0.75rem;   /* 12px */
+  --space-4:   1rem;      /* 16px */
+  --space-5:   1.25rem;   /* 20px */
+  --space-6:   1.5rem;    /* 24px */
+  --space-8:   2rem;      /* 32px */
+  --space-10:  2.5rem;    /* 40px */
+  --space-12:  3rem;      /* 48px */
+  --space-16:  4rem;      /* 64px */
+  --space-20:  5rem;      /* 80px */
+  --space-24:  6rem;      /* 96px */
+
+  /* ── Border Radius ─────────────────────────────────────────────────────────
+     Slightly rounded — not bubbly, not sharp. Professional.
+  */
+  --radius-none: 0;
+  --radius-sm:   0.25rem;   /* 4px  — small badges, tags */
+  --radius-md:   0.375rem;  /* 6px  — inputs, small cards */
+  --radius-lg:   0.5rem;    /* 8px  — cards, panels */
+  --radius-xl:   0.75rem;   /* 12px — modals, large cards */
+  --radius-2xl:  1rem;      /* 16px — hero elements */
+  --radius-full: 9999px;    /* pills, avatars */
+
+  /* ── Shadows ───────────────────────────────────────────────────────────────
+     Subtle on dark backgrounds. Used sparingly for elevation.
+  */
+  --shadow-sm:   0 1px 2px  rgba(0, 0, 0, 0.3);
+  --shadow-md:   0 2px 8px  rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-lg:   0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-xl:   0 8px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-glow-blue:   0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow-green:  0 0 20px rgba(34, 197, 94, 0.15);
+  --shadow-glow-orange: 0 0 16px rgba(245, 158, 11, 0.1);
+  --shadow-glow-red:    0 0 16px rgba(239, 68, 68, 0.1);
+
+  /* ── Transitions ───────────────────────────────────────────────────────────
+     Consistent timing across all interactive elements.
+  */
+  --duration-fast:   100ms;
+  --duration-normal: 150ms;
+  --duration-slow:   250ms;
+  --duration-slower: 350ms;
+  --ease-default:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:         cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:        cubic-bezier(0, 0, 0.2, 1);
+  --ease-bounce:     cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-Index Scale ─────────────────────────────────────────────────────────
+  */
+  --z-base:      0;
+  --z-raised:    10;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-overlay:   300;
+  --z-modal:     400;
+  --z-toast:     500;
+
+  /* ── Layout ────────────────────────────────────────────────────────────────
+  */
+  --header-height: 3.5rem;  /* 56px */
+  --content-max-width: 80rem; /* 1280px */
+  --content-padding: var(--space-6);
+}
+
+/* ─── Utility: focus ring ───────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-600);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-600) transparent;
+}
+
+/* ─── Selection ─────────────────────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--color-text-primary);
+}
