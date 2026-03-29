@@ -18,6 +18,7 @@ export function HomePage({ onNavigateToSquad }: HomePageProps) {
   const fetchSquads = useSquadStore((s) => s.fetchSquads);
   const createSquad = useSquadStore((s) => s.createSquad);
   const startSquad = useSquadStore((s) => s.startSquad);
+  const cliAvailable = useSquadStore((s) => s.cliAvailable);
 
   const [showCreator, setShowCreator] = useState(false);
   const [quickStartHint, setQuickStartHint] = useState<string | null>(null);
@@ -115,6 +116,8 @@ export function HomePage({ onNavigateToSquad }: HomePageProps) {
             type="button"
             className="btn btn-primary"
             onClick={() => setShowCreator(true)}
+            disabled={cliAvailable === false}
+            title={cliAvailable === false ? "Claude Code CLI not detected" : undefined}
           >
             + New Squad
           </button>

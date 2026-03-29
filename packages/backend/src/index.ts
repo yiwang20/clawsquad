@@ -5,7 +5,7 @@
  * and starts the HTTP + WebSocket server.
  */
 
-import { createApp } from "./server.js";
+import { createApp, detectCli } from "./server.js";
 import { Database } from "./services/Database.js";
 import { ProcessManager } from "./services/ProcessManager.js";
 import { SquadManager } from "./services/SquadManager.js";
@@ -20,6 +20,11 @@ async function main(): Promise<void> {
   const db = new Database(DB_PATH);
   db.migrate();
 
+  const cliAvailable = detectCli();
+  if (!cliAvailable) {
+    console.warn("[server] WARNING: 'claude' CLI not found on PATH. Agent processes will fail to start.");
+  }
+
   const messageStore = new MessageStore(db);
   const processManager = new ProcessManager(db, messageStore);
   const squadManager = new SquadManager(db, processManager);
@@ -33,7 +38,7 @@ async function main(): Promise<void> {
     taskStore,
     agentMessageStore,
     db,
-  });
+  }, cliAvailable);
 
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {

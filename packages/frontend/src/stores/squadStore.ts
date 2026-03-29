@@ -32,11 +32,15 @@ export interface SquadStoreState {
   tasks: Map<string, TaskResponse[]>;
   agentMessages: Map<string, AgentMessageResponse[]>;
 
+  // CLI health — null means not yet checked
+  cliAvailable: boolean | null;
+
   // Navigation
   activeSquadId: string | null;
   activeAgentId: string | null;
 
   // Data fetching
+  checkHealth(): Promise<void>;
   fetchSquads(): Promise<void>;
   fetchSquad(squadId: string): Promise<Squad>;
   fetchAgentMessages(agentId: string): Promise<void>;
@@ -165,8 +169,23 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
   outputBuffers: new Map(),
   tasks: new Map(),
   agentMessages: new Map(),
+  cliAvailable: null,
   activeSquadId: null,
   activeAgentId: null,
+
+  /* ── Health check ────────────────────────────────────────────────────── */
+
+  async checkHealth() {
+    try {
+      const res = await fetch("/health");
+      if (res.ok) {
+        const data = await res.json() as { cliAvailable?: boolean };
+        set({ cliAvailable: data.cliAvailable ?? true });
+      }
+    } catch {
+      // Backend unreachable — don't block UI, leave cliAvailable as null
+    }
+  },
 
   /* ── Data fetching ───────────────────────────────────────────────────── */
 

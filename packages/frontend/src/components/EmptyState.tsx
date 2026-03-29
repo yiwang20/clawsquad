@@ -1,4 +1,5 @@
 import { QUICK_STARTS } from "../data/quickStarts";
+import { useSquadStore } from "../stores/squadStore";
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -12,6 +13,9 @@ interface EmptyStateProps {
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export function EmptyState({ onCreateSquad, onQuickStart }: EmptyStateProps) {
+  const cliAvailable = useSquadStore((s) => s.cliAvailable);
+  const cliMissing = cliAvailable === false;
+
   return (
     <div className="empty-state">
       <div
@@ -53,6 +57,8 @@ export function EmptyState({ onCreateSquad, onQuickStart }: EmptyStateProps) {
         type="button"
         className="btn btn-primary btn-lg"
         onClick={onCreateSquad}
+        disabled={cliMissing}
+        title={cliMissing ? "Claude Code CLI not detected" : undefined}
         style={{ marginTop: "var(--space-2)" }}
       >
         Create Your Squad
@@ -77,6 +83,7 @@ export function EmptyState({ onCreateSquad, onQuickStart }: EmptyStateProps) {
                 type="button"
                 className="quick-start-card"
                 onClick={() => onQuickStart(qs.title)}
+                disabled={cliMissing}
               >
                 <div className="quick-start-card-title">{qs.title}</div>
                 <div className="quick-start-card-meta">

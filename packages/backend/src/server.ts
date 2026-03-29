@@ -1,5 +1,6 @@
 import express from "express";
 import { createServer } from "http";
+import { execSync } from "node:child_process";
 import { SQUADS_PATH, AGENTS_PATH } from "@clawsquad/shared";
 import { createSquadsRouter } from "./routes/squads.js";
 import { createAgentsRouter } from "./routes/agents.js";
@@ -21,7 +22,17 @@ export interface ServerServices {
   db: Database;
 }
 
-export function createApp(services: ServerServices) {
+/** Returns true if the `claude` CLI binary is on PATH. Checked once at startup. */
+export function detectCli(): boolean {
+  try {
+    execSync("claude --version", { stdio: "ignore", timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function createApp(services: ServerServices, cliAvailable = detectCli()) {
   const { processManager, squadManager, messageStore, taskStore, agentMessageStore, db } = services;
 
   const app = express();
@@ -30,7 +41,7 @@ export function createApp(services: ServerServices) {
 
   // Health check
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, timestamp: new Date().toISOString() });
+    res.json({ ok: true, cliAvailable, timestamp: new Date().toISOString() });
   });
 
   const httpServer = createServer(app);

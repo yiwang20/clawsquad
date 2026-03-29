@@ -88,8 +88,52 @@ function ReconnectionBanner({ status }: { status: WsStatus }) {
 
 // ─── App shell ────────────────────────────────────────────────────────────────
 
+function CliWarningBanner() {
+  const cliAvailable = useSquadStore((s) => s.cliAvailable);
+  if (cliAvailable !== false) return null;
+
+  return (
+    <div
+      role="alert"
+      style={{
+        background: "rgba(220, 38, 38, 0.12)",
+        borderBottom: "1px solid var(--color-red-600)",
+        color: "var(--color-red-400)",
+        fontSize: "var(--text-sm)",
+        textAlign: "center",
+        padding: "var(--space-2) var(--space-4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "var(--space-3)",
+      }}
+    >
+      <span>
+        Claude Code CLI not detected. Install it to use ClawSquad.
+      </span>
+      <a
+        href="https://docs.anthropic.com/en/docs/claude-code/getting-started"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: "var(--color-red-300)",
+          textDecoration: "underline",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Installation guide ↗
+      </a>
+    </div>
+  );
+}
+
 function AppShell() {
   const { status } = useWebSocket();
+  const checkHealth = useSquadStore((s) => s.checkHealth);
+
+  useEffect(() => {
+    checkHealth().catch(() => {});
+  }, [checkHealth]);
 
   return (
     <div className="app">
@@ -106,6 +150,7 @@ function AppShell() {
         </div>
       </header>
 
+      <CliWarningBanner />
       <ReconnectionBanner status={status} />
 
       <Routes>
