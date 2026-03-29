@@ -7,10 +7,16 @@ import type {
   AgentStatus,
   SquadStatus,
   PaginatedMessagesResponse,
+  TaskResponse,
+  AgentMessageResponse,
+  CreateTaskRequest,
+  UpdateTaskRequest,
 } from "@clawsquad/shared";
 import {
   SQUADS_PATH,
   AGENTS_PATH,
+  TASKS_PATH,
+  AGENT_MESSAGES_PATH,
   MAX_OUTPUT_BUFFER_SIZE,
 } from "@clawsquad/shared";
 import { toast } from "./toastStore";
@@ -22,6 +28,10 @@ export interface SquadStoreState {
   agents: Map<string, Agent>;
   outputBuffers: Map<string, StreamMessage[]>;
 
+  // V2: Tasks and agent messages, keyed by squadId
+  tasks: Map<string, TaskResponse[]>;
+  agentMessages: Map<string, AgentMessageResponse[]>;
+
   // Navigation
   activeSquadId: string | null;
   activeAgentId: string | null;
@@ -30,6 +40,20 @@ export interface SquadStoreState {
   fetchSquads(): Promise<void>;
   fetchSquad(squadId: string): Promise<Squad>;
   fetchAgentMessages(agentId: string): Promise<void>;
+
+  // V2: Task actions
+  fetchTasks(squadId: string): Promise<void>;
+  createTask(squadId: string, req: CreateTaskRequest): Promise<TaskResponse>;
+  updateTask(squadId: string, taskId: string, req: UpdateTaskRequest): Promise<TaskResponse>;
+  deleteTask(squadId: string, taskId: string): Promise<void>;
+
+  // V2: Agent message fetch
+  fetchSquadMessages(squadId: string): Promise<void>;
+
+  // V2: WebSocket state updates for tasks and messages
+  upsertTask(squadId: string, task: TaskResponse): void;
+  removeTask(squadId: string, taskId: string): void;
+  appendAgentMessage(squadId: string, message: AgentMessageResponse): void;
 
   // Squad actions
   createSquad(req: CreateSquadRequest): Promise<Squad>;
@@ -139,6 +163,8 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
   squads: new Map(),
   agents: new Map(),
   outputBuffers: new Map(),
+  tasks: new Map(),
+  agentMessages: new Map(),
   activeSquadId: null,
   activeAgentId: null,
 
@@ -190,6 +216,92 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
     });
   },
 
+  /* ── V2: Task actions ────────────────────────────────────────────────── */
+
+  async fetchTasks(squadId: string) {
+    const list = await apiFetch<TaskResponse[]>(TASKS_PATH(squadId));
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      tasks.set(squadId, list);
+      return { tasks };
+    });
+  },
+
+  async createTask(squadId: string, req: CreateTaskRequest) {
+    const task = await apiFetch<TaskResponse>(TASKS_PATH(squadId), {
+      method: "POST",
+      body: JSON.stringify(req),
+    });
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      tasks.set(squadId, [...(tasks.get(squadId) ?? []), task]);
+      return { tasks };
+    });
+    return task;
+  },
+
+  async updateTask(squadId: string, taskId: string, req: UpdateTaskRequest) {
+    const task = await apiFetch<TaskResponse>(`${TASKS_PATH(squadId)}/${taskId}`, {
+      method: "PATCH",
+      body: JSON.stringify(req),
+    });
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      const list = tasks.get(squadId) ?? [];
+      tasks.set(squadId, list.map((t) => (t.id === taskId ? task : t)));
+      return { tasks };
+    });
+    return task;
+  },
+
+  async deleteTask(squadId: string, taskId: string) {
+    await apiFetch<void>(`${TASKS_PATH(squadId)}/${taskId}`, { method: "DELETE" });
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      tasks.set(squadId, (tasks.get(squadId) ?? []).filter((t) => t.id !== taskId));
+      return { tasks };
+    });
+  },
+
+  /* ── V2: Agent messages ──────────────────────────────────────────────── */
+
+  async fetchSquadMessages(squadId: string) {
+    const list = await apiFetch<AgentMessageResponse[]>(AGENT_MESSAGES_PATH(squadId));
+    set((state) => {
+      const agentMessages = new Map(state.agentMessages);
+      agentMessages.set(squadId, list);
+      return { agentMessages };
+    });
+  },
+
+  /* ── V2: WebSocket state updaters ────────────────────────────────────── */
+
+  upsertTask(squadId: string, task: TaskResponse) {
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      const list = tasks.get(squadId) ?? [];
+      const idx = list.findIndex((t) => t.id === task.id);
+      tasks.set(squadId, idx >= 0 ? list.map((t) => (t.id === task.id ? task : t)) : [...list, task]);
+      return { tasks };
+    });
+  },
+
+  removeTask(squadId: string, taskId: string) {
+    set((state) => {
+      const tasks = new Map(state.tasks);
+      tasks.set(squadId, (tasks.get(squadId) ?? []).filter((t) => t.id !== taskId));
+      return { tasks };
+    });
+  },
+
+  appendAgentMessage(squadId: string, message: AgentMessageResponse) {
+    set((state) => {
+      const agentMessages = new Map(state.agentMessages);
+      agentMessages.set(squadId, [...(agentMessages.get(squadId) ?? []), message]);
+      return { agentMessages };
+    });
+  },
+
   /* ── Squad actions ───────────────────────────────────────────────────── */
 
   async createSquad(req: CreateSquadRequest) {
@@ -210,6 +322,8 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
     const squads = new Map(get().squads);
     const agents = new Map(get().agents);
     const outputBuffers = new Map(get().outputBuffers);
+    const tasks = new Map(get().tasks);
+    const agentMessages = new Map(get().agentMessages);
     const squad = squads.get(squadId);
     if (squad) {
       for (const agent of squad.agents) {
@@ -218,7 +332,9 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
       }
     }
     squads.delete(squadId);
-    set({ squads, agents, outputBuffers });
+    tasks.delete(squadId);
+    agentMessages.delete(squadId);
+    set({ squads, agents, outputBuffers, tasks, agentMessages });
   },
 
   async startSquad(squadId: string) {

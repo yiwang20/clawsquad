@@ -51,11 +51,24 @@ export class SquadManager {
       created_at: now,
     });
 
-    const agents: Agent[] = req.agents.map((agentInput) => {
-      const agentId = uuidv4();
+    // Pre-assign IDs so we can build the teammate list for each agent's system prompt.
+    const agentMeta = req.agents.map((agentInput) => ({
+      id: uuidv4(),
+      input: agentInput,
+    }));
+
+    const agents: Agent[] = agentMeta.map(({ id: agentId, input: agentInput }) => {
+      const teammates = agentMeta
+        .filter((m) => m.id !== agentId)
+        .map((m) => ({
+          id: m.id,
+          roleName: m.input.roleName,
+          roleDescription: m.input.roleDescription ?? null,
+        }));
+
       const systemPrompt =
         agentInput.systemPrompt ??
-        this.generateSystemPrompt(req.mission, agentInput.roleName, agentInput.roleDescription);
+        this.generateSystemPrompt(req.mission, agentInput.roleName, agentInput.roleDescription, teammates);
 
       const agentRow: AgentRow = {
         id: agentId,
@@ -212,9 +225,14 @@ export class SquadManager {
 
     const agentId = uuidv4();
     const now = new Date().toISOString();
+    const teammates = existingAgents.map((a) => ({
+      id: a.id,
+      roleName: a.role_name,
+      roleDescription: a.role_description,
+    }));
     const systemPrompt =
       req.systemPrompt ??
-      this.generateSystemPrompt(squadRow.mission, roleName, req.roleDescription);
+      this.generateSystemPrompt(squadRow.mission, roleName, req.roleDescription, teammates);
 
     const agentRow: AgentRow = {
       id: agentId,
@@ -271,7 +289,8 @@ export class SquadManager {
   private generateSystemPrompt(
     mission: string,
     roleName: string,
-    roleDescription?: string
+    roleDescription?: string,
+    teammates: Array<{ id: string; roleName: string; roleDescription: string | null }> = []
   ): string {
     const lines: string[] = [
       `You are the ${roleName} on a squad working on: ${mission}.`,
@@ -279,13 +298,43 @@ export class SquadManager {
     if (roleDescription) {
       lines.push(`Your specific focus: ${roleDescription}.`);
     }
+
+    if (teammates.length > 0) {
+      lines.push("", "## Your Squad", "", "You are working alongside other agents in this squad:");
+      for (const t of teammates) {
+        const focus = t.roleDescription ?? "General";
+        lines.push(`- ${t.roleName} (ID: ${t.id}): ${focus}`);
+      }
+    }
+
     lines.push(
       "",
-      "Guidelines:",
-      "- Work independently on your area of responsibility.",
-      "- Be thorough and produce high-quality output.",
-      "- When your current task is complete, summarize what you accomplished and what remains.",
-      "- If you encounter a blocker or need input from another role, clearly state what you need.",
+      "## Coordination Commands",
+      "",
+      "You can coordinate with your squad by including these commands in your responses.",
+      "The system will detect and execute them automatically. Place each command on its own line.",
+      "",
+      "### Task Management",
+      '- `[TASK_CREATE "title" "description"]` — Create a new task on the squad task board',
+      "- `[TASK_LIST]` — Show all current tasks and their statuses",
+      "- `[TASK_CLAIM taskId]` — Claim a task and mark it as in-progress",
+      "- `[TASK_COMPLETE taskId]` — Mark a task as completed",
+      '- `[TASK_UPDATE taskId "status"]` — Update task status (pending/in_progress/completed)',
+      "",
+      "### Communication",
+      '- `[SEND_MESSAGE agentId "message text"]` — Send a message to a specific agent',
+      '- `[BROADCAST "message text"]` — Send a message to all agents in the squad',
+      "- `[CHECK_MESSAGES]` — Check your inbox for new messages",
+      "",
+      "### Guidelines",
+      "- Break your work into tasks early so the squad has visibility.",
+      "- Claim tasks before starting work to avoid duplication.",
+      "- Mark tasks complete when done.",
+      "- Use SEND_MESSAGE to ask specific agents for help or share findings.",
+      "- Use BROADCAST for announcements that affect the whole squad.",
+      "- Check messages periodically to stay coordinated.",
+      "",
+      "When your current task is complete, summarize what you accomplished and check for new tasks or messages.",
     );
     return lines.join("\n");
   }

@@ -5,6 +5,9 @@ import { toast } from "../stores/toastStore";
 import { AgentCard } from "../components/AgentCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { StatusBadge } from "../components/StatusBadge";
+import { TaskBoard } from "../components/TaskBoard";
+import { AgentInbox } from "../components/AgentInbox";
+import { ProgressDashboard } from "../components/ProgressDashboard";
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -12,6 +15,17 @@ interface SquadDetailPageProps {
   squadId: string;
   onNavigateHome: () => void;
 }
+
+/* ─── Tab types ─────────────────────────────────────────────────────────────── */
+
+type TabId = "agents" | "tasks" | "messages" | "overview";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "agents",   label: "Agents"   },
+  { id: "tasks",    label: "Tasks"    },
+  { id: "messages", label: "Messages" },
+  { id: "overview", label: "Overview" },
+];
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
@@ -29,10 +43,13 @@ export function SquadDetailPage({
   const deleteSquad = useSquadStore((s) => s.deleteSquad);
   const startAgent = useSquadStore((s) => s.startAgent);
   const fetchAgentMessages = useSquadStore((s) => s.fetchAgentMessages);
+  const fetchTasks = useSquadStore((s) => s.fetchTasks);
+  const fetchSquadMessages = useSquadStore((s) => s.fetchSquadMessages);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("agents");
 
   // Fetch squad on mount / when squadId changes
   useEffect(() => {
@@ -63,6 +80,12 @@ export function SquadDetailPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squad?.id, fetchAgentMessages]);
+
+  // Fetch V2 tasks and agent messages on mount
+  useEffect(() => {
+    fetchTasks(squadId).catch(() => {});
+    fetchSquadMessages(squadId).catch(() => {});
+  }, [squadId, fetchTasks, fetchSquadMessages]);
 
   // Poll squad + agent statuses every 5 seconds as fallback for missed WS events
   useEffect(() => {
@@ -218,55 +241,85 @@ export function SquadDetailPage({
         </div>
       </div>
 
-      {/* Agent grid */}
-      {squadAgents.length === 0 ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "var(--space-16) var(--space-4)",
-            color: "var(--color-text-tertiary)",
-            textAlign: "center",
-            gap: "var(--space-2)",
-          }}
-        >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ opacity: 0.4 }}
+      {/* Tab navigation */}
+      <div className="tab-nav" style={{ marginBottom: "var(--space-5)" }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`tab-nav-item${activeTab === tab.id ? " tab-nav-item-active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            <line x1="12" y1="13" x2="12" y2="17" />
-            <line x1="10" y1="15" x2="14" y2="15" />
-          </svg>
-          <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>No agents yet</div>
-          <div style={{ fontSize: "var(--text-sm)", maxWidth: "24rem" }}>
-            This squad has no agents. Delete and recreate to add agents.
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "agents" && (
+        squadAgents.length === 0 ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "var(--space-16) var(--space-4)",
+              color: "var(--color-text-tertiary)",
+              textAlign: "center",
+              gap: "var(--space-2)",
+            }}
+          >
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ opacity: 0.4 }}
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              <line x1="12" y1="13" x2="12" y2="17" />
+              <line x1="10" y1="15" x2="14" y2="15" />
+            </svg>
+            <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>No agents yet</div>
+            <div style={{ fontSize: "var(--text-sm)", maxWidth: "24rem" }}>
+              This squad has no agents. Delete and recreate to add agents.
+            </div>
           </div>
+        ) : (
+          <div className="agent-grid">
+            {squadAgents.map((agent) => {
+              const msgs = outputBuffers.get(agent.id);
+              return (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  {...(msgs !== undefined && { outputMessages: msgs })}
+                  onRestart={startAgent}
+                />
+              );
+            })}
+          </div>
+        )
+      )}
+
+      {activeTab === "tasks" && (
+        <TaskBoard squadId={squadId} />
+      )}
+
+      {activeTab === "messages" && (
+        <div style={{ height: "calc(100vh - 22rem)", minHeight: "20rem" }}>
+          <AgentInbox squadId={squadId} />
         </div>
-      ) : (
-        <div className="agent-grid">
-          {squadAgents.map((agent) => {
-            const msgs = outputBuffers.get(agent.id);
-            return (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                {...(msgs !== undefined && { outputMessages: msgs })}
-                onRestart={startAgent}
-              />
-            );
-          })}
-        </div>
+      )}
+
+      {activeTab === "overview" && (
+        <ProgressDashboard squadId={squadId} />
       )}
     </div>
   );

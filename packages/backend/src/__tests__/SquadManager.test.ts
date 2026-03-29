@@ -148,6 +148,13 @@ describe("SquadManager", () => {
       expect(updated!.name).toBe("Renamed");
       expect(updated!.mission).toBe("New mission");
     });
+
+    it("rejects whitespace-only name", () => {
+      const squad = manager.createSquad(createRequest());
+      expect(() => manager.updateSquad(squad.id, { name: "   " })).toThrow(
+        "Squad name cannot be empty"
+      );
+    });
   });
 
   describe("deleteSquad", () => {
@@ -168,6 +175,13 @@ describe("SquadManager", () => {
 
     it("throws for unknown squad", () => {
       expect(() => manager.addAgent("nonexistent", { roleName: "Dev" })).toThrow();
+    });
+
+    it("rejects whitespace-only roleName", () => {
+      const squad = manager.createSquad(createRequest());
+      expect(() => manager.addAgent(squad.id, { roleName: "   " })).toThrow(
+        "Agent role name cannot be empty"
+      );
     });
   });
 
@@ -246,6 +260,14 @@ describe("SquadManager", () => {
         expect.anything(),
         "Build the next web app"
       );
+    });
+
+    it("skips agents that already have a running process", async () => {
+      const squad = manager.createSquad(createRequest());
+      // Make hasProcess return true for all agents → spawn should never be called
+      vi.mocked(processManager.hasProcess).mockReturnValue(true);
+      await manager.startSquad(squad.id);
+      expect(processManager.spawn).not.toHaveBeenCalled();
     });
 
     it("throws for unknown squad", async () => {

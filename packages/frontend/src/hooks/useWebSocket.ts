@@ -38,6 +38,9 @@ export function useWebSocket(): { status: WsStatus } {
   const updateSquadStatus = useSquadStore((s) => s.updateSquadStatus);
   const addOutput = useSquadStore((s) => s.addOutput);
   const fetchSquads = useSquadStore((s) => s.fetchSquads);
+  const upsertTask = useSquadStore((s) => s.upsertTask);
+  const removeTask = useSquadStore((s) => s.removeTask);
+  const appendAgentMessage = useSquadStore((s) => s.appendAgentMessage);
   const activeSquadId = useSquadStore((s) => s.activeSquadId);
 
   // Keep a stable ref to activeSquadId for use inside WS callbacks
@@ -116,6 +119,16 @@ export function useWebSocket(): { status: WsStatus } {
         case "squad:status":
           updateSquadStatus(msg.squadId, msg.status);
           break;
+        case "task:created":
+        case "task:updated":
+          upsertTask(msg.squadId, msg.task);
+          break;
+        case "task:deleted":
+          removeTask(msg.squadId, msg.taskId);
+          break;
+        case "agent_message:created":
+          appendAgentMessage(msg.squadId, msg.message);
+          break;
         default: {
           // Exhaustiveness check: log unknown types in dev
           const _: never = msg;
@@ -148,7 +161,7 @@ export function useWebSocket(): { status: WsStatus } {
         if (!unmountedRef.current) connect();
       }, delay);
     };
-  }, [addOutput, updateAgentStatus, updateSquadStatus, fetchSquads]);
+  }, [addOutput, updateAgentStatus, updateSquadStatus, fetchSquads, upsertTask, removeTask, appendAgentMessage]);
 
   useEffect(() => {
     unmountedRef.current = false;

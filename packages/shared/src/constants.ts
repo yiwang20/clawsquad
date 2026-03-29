@@ -78,6 +78,12 @@ export const SQUADS_PATH = `${API_BASE_PATH}/squads`;
 
 export const AGENTS_PATH = `${API_BASE_PATH}/agents`;
 
+/** V2: Tasks are nested under squads. */
+export const TASKS_PATH = (squadId: string) => `${SQUADS_PATH}/${squadId}/tasks`;
+
+/** V2: Agent messages are nested under squads. */
+export const AGENT_MESSAGES_PATH = (squadId: string) => `${SQUADS_PATH}/${squadId}/agent-messages`;
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
 export const WS_PATH = "/ws";

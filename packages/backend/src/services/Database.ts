@@ -37,6 +37,28 @@ export interface MessageRow {
   created_at: string;
 }
 
+export interface TaskRow {
+  id: string;
+  squad_id: string;
+  title: string;
+  description: string;
+  status: "pending" | "in_progress" | "completed";
+  assignee_id: string | null;
+  created_by: string | null;
+  depends_on: string; // JSON array
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentMessageRow {
+  id: number;
+  squad_id: string;
+  from_agent_id: string;
+  to_agent_id: string | null;
+  content: string;
+  created_at: string;
+}
+
 const SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
@@ -130,12 +152,50 @@ export class Database {
   /** Run schema migrations and reset in-flight agent statuses. Called once on startup. */
   migrate(): void {
     this.db.exec(SCHEMA);
+    this.migrateV2();
     // Add columns introduced after the initial schema — CREATE TABLE IF NOT EXISTS
     // is a no-op on existing databases, so new columns must be added via ALTER TABLE.
     this.addColumnIfMissing("agents", "max_budget_usd", "REAL");
     // On server restart, agents stuck in 'running'/'waiting' must be reset to 'stopped'
     // so users can cleanly restart them rather than seeing stale "running" state.
     this.resetRunningAgents();
+  }
+
+  /**
+   * V2 migration: drop and recreate the placeholder tasks and agent_messages tables
+   * with the final V2 schema. Safe to run on V1 databases — V1 never wrote to these tables.
+   */
+  private migrateV2(): void {
+    this.db.exec(`
+      DROP TABLE IF EXISTS tasks;
+      DROP TABLE IF EXISTS agent_messages;
+
+      CREATE TABLE IF NOT EXISTS tasks (
+        id          TEXT PRIMARY KEY,
+        squad_id    TEXT NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
+        title       TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        status      TEXT NOT NULL DEFAULT 'pending',
+        assignee_id TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        created_by  TEXT REFERENCES agents(id) ON DELETE SET NULL,
+        depends_on  TEXT DEFAULT '[]',
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_tasks_squad ON tasks(squad_id, status);
+      CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id);
+
+      CREATE TABLE IF NOT EXISTS agent_messages (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        squad_id      TEXT NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
+        from_agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        to_agent_id   TEXT REFERENCES agents(id) ON DELETE CASCADE,
+        content       TEXT NOT NULL,
+        created_at    TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_agent_messages_to ON agent_messages(to_agent_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_agent_messages_squad ON agent_messages(squad_id, created_at);
+    `);
   }
 
   /**
@@ -278,6 +338,88 @@ export class Database {
       .prepare(`SELECT COUNT(*) as count FROM messages WHERE agent_id = ?`)
       .get(agentId) as { count: number };
     return row.count;
+  }
+
+  // ─── Task operations ──────────────────────────────────────────────────────
+
+  insertTask(row: TaskRow): void {
+    this.db
+      .prepare(
+        `INSERT INTO tasks
+           (id, squad_id, title, description, status, assignee_id, created_by, depends_on, created_at, updated_at)
+         VALUES
+           (@id, @squad_id, @title, @description, @status, @assignee_id, @created_by, @depends_on, @created_at, @updated_at)`
+      )
+      .run(row);
+  }
+
+  getTask(id: string): TaskRow | undefined {
+    return this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow | undefined;
+  }
+
+  listTasksBySquad(squadId: string): TaskRow[] {
+    return this.db
+      .prepare(`SELECT * FROM tasks WHERE squad_id = ? ORDER BY created_at ASC`)
+      .all(squadId) as TaskRow[];
+  }
+
+  updateTask(id: string, fields: Partial<Pick<TaskRow, "title" | "description" | "status" | "assignee_id" | "depends_on">>, updatedAt: string): void {
+    const updates: string[] = ["updated_at = ?"];
+    const params: unknown[] = [updatedAt];
+    if (fields.title !== undefined) { updates.push("title = ?"); params.push(fields.title); }
+    if (fields.description !== undefined) { updates.push("description = ?"); params.push(fields.description); }
+    if (fields.status !== undefined) { updates.push("status = ?"); params.push(fields.status); }
+    if ("assignee_id" in fields) { updates.push("assignee_id = ?"); params.push(fields.assignee_id ?? null); }
+    if (fields.depends_on !== undefined) { updates.push("depends_on = ?"); params.push(fields.depends_on); }
+    params.push(id);
+    this.db.prepare(`UPDATE tasks SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+  }
+
+  deleteTask(id: string): void {
+    this.db.prepare(`DELETE FROM tasks WHERE id = ?`).run(id);
+  }
+
+  // ─── Agent message operations ──────────────────────────────────────────────
+
+  insertAgentMessage(row: Omit<AgentMessageRow, "id">): number {
+    const result = this.db
+      .prepare(
+        `INSERT INTO agent_messages (squad_id, from_agent_id, to_agent_id, content, created_at)
+         VALUES (@squad_id, @from_agent_id, @to_agent_id, @content, @created_at)`
+      )
+      .run(row);
+    return result.lastInsertRowid as number;
+  }
+
+  getAgentMessage(id: number): AgentMessageRow | undefined {
+    return this.db.prepare(`SELECT * FROM agent_messages WHERE id = ?`).get(id) as AgentMessageRow | undefined;
+  }
+
+  listMessagesForAgent(agentId: string, since?: string): AgentMessageRow[] {
+    if (since) {
+      return this.db
+        .prepare(
+          `SELECT * FROM agent_messages
+           WHERE (to_agent_id = ? OR to_agent_id IS NULL) AND created_at > ?
+           ORDER BY created_at ASC`
+        )
+        .all(agentId, since) as AgentMessageRow[];
+    }
+    return this.db
+      .prepare(
+        `SELECT * FROM agent_messages
+         WHERE to_agent_id = ? OR to_agent_id IS NULL
+         ORDER BY created_at ASC`
+      )
+      .all(agentId) as AgentMessageRow[];
+  }
+
+  listSquadMessages(squadId: string, limit = 100): AgentMessageRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM agent_messages WHERE squad_id = ? ORDER BY created_at ASC LIMIT ?`
+      )
+      .all(squadId, limit) as AgentMessageRow[];
   }
 
   close(): void {

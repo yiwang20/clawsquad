@@ -160,6 +160,47 @@ export interface StoredMessage {
   createdAt: string;
 }
 
+// ─── V2: Tasks ────────────────────────────────────────────────────────────────
+
+export interface TaskResponse {
+  id: string;
+  squadId: string;
+  title: string;
+  description: string;
+  status: "pending" | "in_progress" | "completed";
+  assigneeId: string | null;
+  createdBy: string | null;
+  dependsOn: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  dependsOn?: string[];
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  status?: "pending" | "in_progress" | "completed";
+  assigneeId?: string | null;
+  dependsOn?: string[];
+}
+
+// ─── V2: Agent Messages ───────────────────────────────────────────────────────
+
+export interface AgentMessageResponse {
+  id: number;
+  squadId: string;
+  fromAgentId: string;
+  toAgentId: string | null;
+  content: string;
+  createdAt: string;
+}
+
 // ─── WebSocket protocol ───────────────────────────────────────────────────────
 
 // Client → Server
@@ -176,7 +217,11 @@ export type WSServerMessage =
   | { type: "agent:output"; agentId: string; data: StreamMessage }
   | { type: "agent:status"; agentId: string; status: AgentStatus }
   | { type: "agent:error"; agentId: string; error: string }
-  | { type: "squad:status"; squadId: string; status: SquadStatus };
+  | { type: "squad:status"; squadId: string; status: SquadStatus }
+  | { type: "task:created"; squadId: string; task: TaskResponse }
+  | { type: "task:updated"; squadId: string; task: TaskResponse }
+  | { type: "task:deleted"; squadId: string; taskId: string }
+  | { type: "agent_message:created"; squadId: string; message: AgentMessageResponse };
 
 // ─── Frontend store ───────────────────────────────────────────────────────────
 

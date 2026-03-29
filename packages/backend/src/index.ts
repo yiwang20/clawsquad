@@ -10,6 +10,8 @@ import { Database } from "./services/Database.js";
 import { ProcessManager } from "./services/ProcessManager.js";
 import { SquadManager } from "./services/SquadManager.js";
 import { MessageStore } from "./services/MessageStore.js";
+import { TaskStore } from "./services/TaskStore.js";
+import { AgentMessageStore } from "./services/AgentMessageStore.js";
 import { DB_PATH } from "@clawsquad/shared";
 
 const PORT = parseInt(process.env["PORT"] ?? "3001", 10);
@@ -21,11 +23,16 @@ async function main(): Promise<void> {
   const messageStore = new MessageStore(db);
   const processManager = new ProcessManager(db, messageStore);
   const squadManager = new SquadManager(db, processManager);
+  const taskStore = new TaskStore(db);
+  const agentMessageStore = new AgentMessageStore(db);
 
   const { httpServer, wsHub } = createApp({
     processManager,
     squadManager,
     messageStore,
+    taskStore,
+    agentMessageStore,
+    db,
   });
 
   // Graceful shutdown

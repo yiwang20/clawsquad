@@ -6,6 +6,8 @@ import type {
   WSServerMessage,
   StreamMessage,
   AgentStatus,
+  TaskResponse,
+  AgentMessageResponse,
 } from "@clawsquad/shared";
 import { WS_PATH } from "@clawsquad/shared";
 import type { ProcessManager, SquadManager } from "../services/types.js";
@@ -176,6 +178,42 @@ export class WebSocketHub {
         }
       }
     );
+  }
+
+  // ─── V2: Task and agent message broadcast helpers ───────────────────────────
+
+  /**
+   * Broadcast a task event to all clients subscribed to the given squad.
+   * For "task:deleted", pass null for task and supply the taskId.
+   */
+  broadcastTaskEvent(
+    squadId: string,
+    eventType: "task:created" | "task:updated" | "task:deleted",
+    task: TaskResponse | null,
+    taskId?: string
+  ): void {
+    if (eventType === "task:deleted") {
+      this.broadcastToSquad(squadId, {
+        type: "task:deleted",
+        squadId,
+        taskId: taskId!,
+      });
+    } else {
+      this.broadcastToSquad(squadId, {
+        type: eventType,
+        squadId,
+        task: task!,
+      });
+    }
+  }
+
+  /** Broadcast an agent message event to all clients subscribed to the given squad. */
+  broadcastAgentMessageEvent(squadId: string, message: AgentMessageResponse): void {
+    this.broadcastToSquad(squadId, {
+      type: "agent_message:created",
+      squadId,
+      message,
+    });
   }
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────

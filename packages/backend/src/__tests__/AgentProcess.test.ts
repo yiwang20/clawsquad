@@ -85,6 +85,68 @@ describe("AgentProcess — working directory handling", () => {
   });
 });
 
+describe("AgentProcess — buildArgs", () => {
+  it("includes --resume when sessionId is set", () => {
+    const proc = new AgentProcess({ ...testConfig, sessionId: "sess-123" });
+    const args = (proc as unknown as { buildArgs(): string[] }).buildArgs();
+    const idx = args.indexOf("--resume");
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(args[idx + 1]).toBe("sess-123");
+  });
+
+  it("omits --resume when sessionId is null", () => {
+    const proc = new AgentProcess({ ...testConfig, sessionId: null });
+    const args = (proc as unknown as { buildArgs(): string[] }).buildArgs();
+    expect(args).not.toContain("--resume");
+  });
+});
+
+describe("AgentProcess — writeToStdin", () => {
+  it("sends correct JSON format", () => {
+    const proc = new AgentProcess(testConfig);
+    const written: string[] = [];
+    const fakeProc = { stdin: { write: (data: string) => written.push(data) } };
+    (proc as unknown as { proc: unknown }).proc = fakeProc;
+
+    (proc as unknown as { writeToStdin(p: string): void }).writeToStdin("hello world");
+
+    expect(written.length).toBe(1);
+    const parsed = JSON.parse(written[0]!.trimEnd());
+    expect(parsed).toEqual({
+      type: "user",
+      message: { role: "user", content: "hello world" },
+    });
+    expect(written[0]).toMatch(/\n$/);
+  });
+});
+
+describe("AgentProcess — sendPrompt queuing", () => {
+  it("queues prompt while running, drains on result message", () => {
+    const proc = new AgentProcess(testConfig);
+    const written: string[] = [];
+    const fakeProc = { stdin: { write: (data: string) => written.push(data) } };
+    (proc as unknown as { proc: unknown }).proc = fakeProc;
+    // Force status to "running"
+    (proc as unknown as { _status: string })._status = "running";
+
+    proc.sendPrompt("queued prompt");
+    // Should be queued, not written yet
+    expect(written.length).toBe(0);
+    expect(
+      (proc as unknown as { promptQueue: string[] }).promptQueue
+    ).toContain("queued prompt");
+
+    // Simulate a result message arriving → drainQueue → writeToStdin
+    (proc as unknown as { processChunk(c: string): void }).processChunk(
+      '{"type":"result","subtype":"success"}\n'
+    );
+
+    expect(written.length).toBe(1);
+    const parsed = JSON.parse(written[0]!.trimEnd());
+    expect(parsed.message.content).toBe("queued prompt");
+  });
+});
+
 describe("AgentProcess stream parsing (via internal access)", () => {
   let proc: AgentProcess;
   let statuses: string[];
