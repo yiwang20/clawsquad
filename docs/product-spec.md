@@ -370,3 +370,66 @@ A final review of what we specced vs. what actually shipped in V1.
 - No mobile/tablet
 - No cost tracking
 - No "save as template" button
+
+---
+
+## V2 Features
+
+V2 ships the "No agent coordination" constraint that V1 deliberately deferred. Agents can now divide work, share status, and communicate — all through a command protocol embedded in their output stream, requiring no changes to the Claude CLI itself.
+
+### 1. Task Board
+
+A three-column kanban board (Pending / In Progress / Completed) visible on every Squad Detail page under the "Tasks" tab.
+
+- Agents create, claim, and complete tasks by including `[COMMAND]` markers in their output. The backend intercepts these and mutates the task store in real time.
+- Users can also create tasks manually via the UI ("Add Task" form in the Pending column).
+- Cards show title, description preview, and assignee role name. Clicking a card advances its status — Pending → In Progress → Completed → Pending.
+- Real-time updates via WebSocket `task:created`, `task:updated`, `task:deleted` events.
+
+### 2. Agent-to-Agent Messaging
+
+An inbox panel on every Squad Detail page under the "Messages" tab.
+
+- Agents send direct messages (`[SEND_MESSAGE agentId "text"]`) or squad-wide broadcasts (`[BROADCAST "text"]`). The backend delivers these as injected prompts to recipients.
+- The UI shows a chronological message list with color-coded sender/recipient badges: blue for sender, purple for direct recipient, orange for broadcasts.
+- Optional filter-by-agent dropdown. Auto-scrolls to latest message.
+
+### 3. CLI Command Injection
+
+Eight commands agents can embed in their output text. Parsed by the `CommandInterceptor` service using a `[COMMAND ...]` pattern:
+
+| Command | Effect |
+|---|---|
+| `[TASK_CREATE "title" "description"]` | Creates a new task on the board |
+| `[TASK_LIST]` | Returns current task list as a follow-up prompt |
+| `[TASK_CLAIM taskId]` | Claims a pending task (marks in-progress, assigns to agent) |
+| `[TASK_COMPLETE taskId]` | Marks a task completed |
+| `[TASK_UPDATE taskId "status"]` | Sets task status to any valid value |
+| `[SEND_MESSAGE agentId "text"]` | Sends a direct message to another agent |
+| `[BROADCAST "text"]` | Sends a message to all agents in the squad |
+| `[CHECK_MESSAGES]` | Delivers new inbox messages as a follow-up prompt |
+
+Command responses are injected as user-role prompts via `ProcessManager.sendPrompt()`, keeping agents in their normal conversational flow. The interceptor queues responses if an agent is mid-turn.
+
+### 4. Progress Dashboard
+
+A summary panel under the "Overview" tab on Squad Detail page.
+
+- **Task progress bar**: Segmented by status (green = completed, blue = in-progress). Shows "X of Y tasks completed."
+- **Agent utilization panel**: Per-agent row with status dot, role name, and assigned task count.
+- **Recent activity feed**: Last 10 events merged from task state changes and inter-agent messages, sorted by time.
+
+### 5. System Prompt Enhancement
+
+`SquadManager.generateSystemPrompt()` updated to inject coordination context into every agent's prompt:
+
+- Full squad member list with IDs and role descriptions (so agents can reference teammates by ID in commands).
+- Coordination commands documentation — all 8 commands with usage examples and guidelines (claim before starting, complete when done, check messages periodically).
+
+### 6. CLI Detection
+
+On app load, the frontend fetches `/api/health` and reads `cliAvailable: boolean`. If the Claude CLI is not installed:
+
+- A red warning banner appears at the top of every page: *"Claude Code CLI not detected. Install it to use ClawSquad."* with a link to the installation guide.
+- All squad creation entry points are disabled (New Squad button, Create Your Squad button, quick-start cards) until the CLI is available.
+- Fulfills the constraint stated in V1 product spec ("ClawSquad should detect if it's missing and show a clear error with install instructions") that was not implemented in V1.
