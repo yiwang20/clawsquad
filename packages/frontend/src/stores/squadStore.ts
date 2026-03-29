@@ -232,11 +232,9 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
       method: "POST",
       body: JSON.stringify(req),
     });
-    set((state) => {
-      const tasks = new Map(state.tasks);
-      tasks.set(squadId, [...(tasks.get(squadId) ?? []), task]);
-      return { tasks };
-    });
+    // Use upsert so a concurrent WS task:created event for the same ID
+    // doesn't produce a duplicate entry.
+    get().upsertTask(squadId, task);
     return task;
   },
 
