@@ -32,9 +32,9 @@ import type { EventEmitter } from "events";
  */
 export interface ProcessManager extends EventEmitter {
   /** Spawn a new CLI process for the given agent config. */
-  spawn(agentId: string, config: AgentConfig): void;
+  spawn(agentId: string, config: AgentConfig, initialPrompt?: string): void;
   /** Start (or resume) an agent that's idle/stopped. */
-  start(agentId: string): Promise<void>;
+  start(agentId: string, initialPrompt?: string): Promise<void>;
   /** Gracefully stop a running agent. */
   stop(agentId: string): Promise<void>;
   /** Stop all running agents. */

@@ -28,6 +28,10 @@ export class SquadManager {
   // ─── Squad CRUD ───────────────────────────────────────────────────────────
 
   createSquad(req: CreateSquadRequest): Squad {
+    const name = req.name.trim();
+    if (!name) {
+      throw new Error("Squad name cannot be empty");
+    }
     if (req.agents.length === 0) {
       throw new Error("A squad must have at least one agent");
     }
@@ -41,7 +45,7 @@ export class SquadManager {
 
     this.db.insertSquad({
       id: squadId,
-      name: req.name,
+      name,
       mission: req.mission,
       working_directory: workingDirectory,
       created_at: now,
@@ -75,7 +79,7 @@ export class SquadManager {
 
     return {
       id: squadId,
-      name: req.name,
+      name,
       mission: req.mission,
       workingDirectory,
       status: "ready",
@@ -127,8 +131,16 @@ export class SquadManager {
     const existing = this.db.getSquad(squadId);
     if (!existing) return null;
 
+    let name: string | undefined;
+    if (req.name !== undefined) {
+      name = req.name.trim();
+      if (!name) {
+        throw new Error("Squad name cannot be empty");
+      }
+    }
+
     this.db.updateSquad(squadId, {
-      ...(req.name !== undefined && { name: req.name }),
+      ...(name !== undefined && { name }),
       ...(req.mission !== undefined && { mission: req.mission }),
     });
 
@@ -150,6 +162,11 @@ export class SquadManager {
 
   /** Start all idle/stopped agents in a squad. */
   async startSquad(squadId: string): Promise<void> {
+    const squadRow = this.db.getSquad(squadId);
+    if (!squadRow) {
+      throw new Error(`Squad not found: ${squadId}`);
+    }
+
     const agentRows = this.db.listAgentsBySquad(squadId);
     if (agentRows.length === 0) {
       throw new Error(`Squad ${squadId} has no agents`);
@@ -158,7 +175,10 @@ export class SquadManager {
     for (const row of agentRows) {
       if (!this.processManager.hasProcess(row.id)) {
         const config = rowToAgentConfig(row);
-        this.processManager.spawn(row.id, config);
+        const initialPrompt = row.role_description
+          ? `${squadRow.mission}\n\nYour focus: ${row.role_description}`
+          : squadRow.mission;
+        this.processManager.spawn(row.id, config, initialPrompt);
       }
     }
   }
@@ -175,6 +195,11 @@ export class SquadManager {
   // ─── Agent management ─────────────────────────────────────────────────────
 
   addAgent(squadId: string, req: AddAgentRequest): Agent {
+    const roleName = req.roleName.trim();
+    if (!roleName) {
+      throw new Error("Agent role name cannot be empty");
+    }
+
     const squadRow = this.db.getSquad(squadId);
     if (!squadRow) {
       throw new Error(`Squad not found: ${squadId}`);
@@ -189,12 +214,12 @@ export class SquadManager {
     const now = new Date().toISOString();
     const systemPrompt =
       req.systemPrompt ??
-      this.generateSystemPrompt(squadRow.mission, req.roleName, req.roleDescription);
+      this.generateSystemPrompt(squadRow.mission, roleName, req.roleDescription);
 
     const agentRow: AgentRow = {
       id: agentId,
       squad_id: squadId,
-      role_name: req.roleName,
+      role_name: roleName,
       role_description: req.roleDescription ?? null,
       model: req.model ?? DEFAULT_MODEL,
       permission_mode: req.permissionMode ?? DEFAULT_PERMISSION_MODE,

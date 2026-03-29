@@ -1,7 +1,32 @@
+import { useNavigate } from "react-router-dom";
 import type { Agent, StreamMessage } from "@clawsquad/shared";
+import { useSquadStore } from "../stores/squadStore";
 import { StatusBadge } from "./StatusBadge";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
+
+/** Extract plain text from a StreamMessage (handles all known shapes). */
+function extractText(msg: StreamMessage): string {
+  // Direct string content
+  if (typeof msg.content === "string") return msg.content;
+  // content_block_delta with text
+  if (typeof (msg as Record<string, unknown>).text === "string")
+    return (msg as Record<string, unknown>).text as string;
+  // Claude stream-json: message.content is an array of content blocks
+  const message = (msg as Record<string, unknown>).message as
+    | { content?: Array<{ type: string; text?: string }> }
+    | undefined;
+  if (message?.content && Array.isArray(message.content)) {
+    return message.content
+      .filter((b) => b.type === "text" && b.text)
+      .map((b) => b.text!)
+      .join("\n");
+  }
+  // result with a result string
+  if (msg.type === "result" && typeof (msg as Record<string, unknown>).result === "string")
+    return (msg as Record<string, unknown>).result as string;
+  return "";
+}
 
 /** Extract a plain-text preview from recent output messages. */
 function getOutputPreview(
@@ -13,17 +38,12 @@ function getOutputPreview(
   // Walk backwards to find the latest assistant text
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]!;
-    if (msg.type === "assistant" && typeof msg.content === "string") {
-      const lines = msg.content.trim().split("\n");
-      return lines.slice(0, maxLines).join("\n");
-    }
-    // Also handle content_block_delta with text
-    if (
-      msg.type === "content_block_delta" &&
-      typeof msg.text === "string"
-    ) {
-      const lines = msg.text.trim().split("\n");
-      return lines.slice(0, maxLines).join("\n");
+    if (msg.type === "assistant" || msg.type === "content_block_delta") {
+      const text = extractText(msg);
+      if (text) {
+        const lines = text.trim().split("\n");
+        return lines.slice(0, maxLines).join("\n");
+      }
     }
   }
   return "";
@@ -35,25 +55,33 @@ interface AgentCardProps {
   agent: Agent;
   /** Recent output messages for this agent (from the store's output buffer) */
   outputMessages?: StreamMessage[];
-  onClick: (squadId: string, agentId: string) => void;
+  /** Called when the user clicks the Restart button on an error/stopped agent */
+  onRestart?: (agentId: string) => void;
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
-export function AgentCard({ agent, outputMessages, onClick }: AgentCardProps) {
-  const preview = getOutputPreview(outputMessages);
+export function AgentCard({ agent, outputMessages, onRestart }: AgentCardProps) {
+  const navigate = useNavigate();
+  const storeMessages = useSquadStore((s) => s.outputBuffers.get(agent.id));
+  const preview = getOutputPreview(outputMessages ?? storeMessages);
   const isActive =
     agent.status === "running" || agent.status === "waiting";
+
+  const handleCardClick = () => {
+    navigate(`/squads/${agent.squadId}/agents/${agent.id}`);
+  };
 
   return (
     <div
       className="card card-compact card-interactive status-border"
       data-status={agent.status}
-      onClick={() => onClick(agent.squadId, agent.id)}
+      style={{ cursor: "pointer" }}
+      onClick={handleCardClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onClick(agent.squadId, agent.id);
+          handleCardClick();
         }
       }}
       role="button"
@@ -115,12 +143,24 @@ export function AgentCard({ agent, outputMessages, onClick }: AgentCardProps) {
         </div>
       )}
 
-      {/* Footer: model badge */}
+      {/* Footer: model badge + restart button */}
       <div
         className="card-footer"
-        style={{ borderTop: "none", paddingTop: "var(--space-2)", marginTop: "var(--space-1)" }}
+        style={{ borderTop: "none", paddingTop: "var(--space-2)", marginTop: "var(--space-1)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
       >
         <span className="model-badge">{agent.model}</span>
+        {onRestart && (agent.status === "error" || agent.status === "stopped") && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRestart(agent.id);
+            }}
+          >
+            Restart
+          </button>
+        )}
       </div>
     </div>
   );

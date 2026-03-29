@@ -10,111 +10,8 @@ import {
   DEFAULT_PERMISSION_MODE,
   MAX_AGENTS_PER_SQUAD,
 } from "@clawsquad/shared";
-
-/* ─── Quick-start presets ───────────────────────────────────────────────────── */
-
-interface QuickStart {
-  title: string;
-  agentCount: number;
-  roles: string;
-  name: string;
-  mission: string;
-  agents: Array<{ roleName: string; roleDescription?: string }>;
-}
-
-const QUICK_STARTS: QuickStart[] = [
-  {
-    title: "Research Squad",
-    agentCount: 3,
-    roles: "Researcher, Analyst, Writer",
-    name: "Research Squad",
-    mission:
-      "Research [your topic] and produce a comprehensive brief with key findings, trends, and recommendations.",
-    agents: [
-      {
-        roleName: "Researcher",
-        roleDescription: "Gather relevant data, sources, and background information",
-      },
-      {
-        roleName: "Analyst",
-        roleDescription: "Analyze findings and identify key patterns and insights",
-      },
-      {
-        roleName: "Report Writer",
-        roleDescription:
-          "Synthesize research and analysis into a clear, actionable brief",
-      },
-    ],
-  },
-  {
-    title: "Dev Team",
-    agentCount: 7,
-    roles: "Architect, PM, Designer, 2 BE, 2 FE",
-    name: "Dev Team",
-    mission:
-      "Build [project/feature]: design the architecture, define product scope, implement frontend and backend, and deliver a polished, production-ready result.",
-    agents: [
-      {
-        roleName: "System Architect",
-        roleDescription:
-          "Design high-level system architecture, make technical decisions, create design documents, and review implementations for architectural consistency. Define project structure, data models, API contracts, and component boundaries before development begins.",
-      },
-      {
-        roleName: "Product Manager",
-        roleDescription:
-          "Define MVP product scope, user personas, and key user flows. Evaluate features from a product perspective, prioritize what to build, and ensure the product aligns with user needs. Write product specs and acceptance criteria for each feature.",
-      },
-      {
-        roleName: "UI Designer",
-        roleDescription:
-          "Design and implement the visual foundation: CSS design system, component styles, responsive layouts, and status indicators. Build UI components with polished visuals, smooth transitions, and accessibility. Review rendered UI for visual quality and consistency.",
-      },
-      {
-        roleName: "Backend SDE 1",
-        roleDescription:
-          "Implement backend services, database layer, and core business logic based on the architect's design. Build data models, service classes, and server infrastructure. Focus on the foundation: database schema, process management, and service layer.",
-      },
-      {
-        roleName: "Backend SDE 2",
-        roleDescription:
-          "Implement REST API routes, WebSocket handlers, and integration layer based on the architect's design. Wire services to HTTP endpoints, handle request validation, and build real-time communication. Write backend tests and handle edge cases.",
-      },
-      {
-        roleName: "Frontend SDE 1",
-        roleDescription:
-          "Set up the frontend project skeleton, routing, state management, and real-time data hooks. Build the core infrastructure: app shell, store, WebSocket connection with auto-reconnect, and data fetching layer. Handle frontend error states, loading states, and performance optimization.",
-      },
-      {
-        roleName: "Frontend SDE 2",
-        roleDescription:
-          "Implement frontend pages and feature components based on designs. Build user-facing views, forms, and interactive elements. Handle documentation, build configuration, and developer experience. Integrate components into the routing and state management layer.",
-      },
-    ],
-  },
-  {
-    title: "Content Squad",
-    agentCount: 3,
-    roles: "Researcher, Writer, Editor",
-    name: "Content Squad",
-    mission:
-      "Create [content type, e.g., blog post, whitepaper] about [topic] that is well-researched, well-written, and ready to publish.",
-    agents: [
-      {
-        roleName: "Researcher",
-        roleDescription: "Research the topic thoroughly and gather supporting material",
-      },
-      {
-        roleName: "Writer",
-        roleDescription: "Draft the content based on research findings",
-      },
-      {
-        roleName: "Editor",
-        roleDescription:
-          "Review and polish the draft for clarity, tone, and accuracy",
-      },
-    ],
-  },
-];
+import { QUICK_STARTS } from "../data/quickStarts";
+import type { QuickStart } from "../data/quickStarts";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -131,6 +28,8 @@ interface AgentDraft {
 interface SquadCreatorProps {
   onLaunch: (request: CreateSquadRequest) => Promise<void>;
   onCancel?: () => void;
+  /** Template name from a quick-start click; auto-applied on mount. */
+  quickStartHint?: string | null;
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
@@ -168,13 +67,19 @@ const PERMISSION_OPTIONS: Array<{ value: string; label: string }> = [
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
-export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
+export function SquadCreator({ onLaunch, onCancel, quickStartHint }: SquadCreatorProps) {
+  // Resolve template from hint at component definition time (before any state)
+  // so we can use it as initial state values — avoids effect/closure timing issues.
+  const initialQS = quickStartHint
+    ? QUICK_STARTS.find((q) => q.title === quickStartHint) ?? null
+    : null;
+
   // ── Step state ──────────────────────────────────────────────────────────
   const [activeStep, setActiveStep] = useState(1);
 
   // ── Step 1: Mission ─────────────────────────────────────────────────────
-  const [name, setName] = useState("");
-  const [mission, setMission] = useState("");
+  const [name, setName] = useState(initialQS?.name ?? "");
+  const [mission, setMission] = useState(initialQS?.mission ?? "");
   const [showMissionAdvanced, setShowMissionAdvanced] = useState(false);
   const [workingDirectory, setWorkingDirectory] = useState("");
   const [defaultModel, setDefaultModel] = useState<string>(DEFAULT_MODEL);
@@ -183,17 +88,41 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
   );
 
   // ── Step 2: Roles ───────────────────────────────────────────────────────
-  const [agents, setAgents] = useState<AgentDraft[]>([createEmptyAgent()]);
+  const [agents, setAgents] = useState<AgentDraft[]>(
+    initialQS
+      ? initialQS.agents.map((a) => ({
+          ...createEmptyAgent(),
+          roleName: a.roleName,
+          roleDescription: a.roleDescription ?? "",
+        }))
+      : [createEmptyAgent()],
+  );
 
   // ── Submission ──────────────────────────────────────────────────────────
+  const [hasSelectedTemplate, setHasSelectedTemplate] = useState(!!initialQS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const missionRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus name input on mount
+  // On mount: if a template was pre-applied via quickStartHint, select the first
+  // [...] placeholder in the mission textarea. Otherwise focus the name input.
   useEffect(() => {
+    if (initialQS) {
+      const textarea = missionRef.current;
+      if (textarea) {
+        const start = initialQS.mission.indexOf("[");
+        const end = initialQS.mission.indexOf("]", start);
+        if (start !== -1 && end !== -1) {
+          textarea.focus();
+          textarea.setSelectionRange(start, end + 1);
+          return;
+        }
+      }
+    }
     nameRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Quick start ─────────────────────────────────────────────────────────
@@ -207,9 +136,22 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
         roleDescription: a.roleDescription ?? "",
       })),
     );
+    setHasSelectedTemplate(true);
     setActiveStep(1);
-    // Re-focus name so user can customize immediately
-    setTimeout(() => nameRef.current?.focus(), 50);
+    // Select first [...] placeholder so user is guided to replace it
+    setTimeout(() => {
+      const textarea = missionRef.current;
+      if (textarea) {
+        const start = qs.mission.indexOf("[");
+        const end = qs.mission.indexOf("]", start);
+        if (start !== -1 && end !== -1) {
+          textarea.focus();
+          textarea.setSelectionRange(start, end + 1);
+          return;
+        }
+      }
+      nameRef.current?.focus();
+    }, 0);
   }, []);
 
   // ── Agent CRUD ──────────────────────────────────────────────────────────
@@ -264,8 +206,8 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
           input.roleDescription = a.roleDescription.trim();
         // Empty string means "use default" — always send explicit values so the
         // backend doesn't have to guess, and agents get the intended defaults.
-        input.model = a.model || DEFAULT_MODEL;
-        input.permissionMode = a.permissionMode || DEFAULT_PERMISSION_MODE;
+        input.model = a.model || defaultModel || DEFAULT_MODEL;
+        input.permissionMode = a.permissionMode || defaultPermissionMode || DEFAULT_PERMISSION_MODE;
         if (a.systemPrompt.trim()) input.systemPrompt = a.systemPrompt.trim();
         return input;
       });
@@ -290,6 +232,8 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
     mission,
     workingDirectory,
     agents,
+    defaultModel,
+    defaultPermissionMode,
     onLaunch,
   ]);
 
@@ -300,7 +244,7 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
   return (
     <div className="squad-creator">
       {/* ── Quick-Start Cards ──────────────────────────────────────── */}
-      {activeStep === 1 && !name && !mission && (
+      {activeStep === 1 && !hasSelectedTemplate && (
         <div className="squad-creator-quickstarts">
           <div className="divider-label">or start from a template</div>
           <div className="quick-start-grid" style={{ marginTop: "var(--space-4)" }}>
@@ -370,6 +314,7 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
                   about the goal and any constraints.
                 </span>
                 <textarea
+                  ref={missionRef}
                   id="squad-mission"
                   className="form-textarea"
                   value={mission}
@@ -734,7 +679,7 @@ export function SquadCreator({ onLaunch, onCancel }: SquadCreatorProps) {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-success btn-lg"
+                  className="btn btn-primary btn-lg"
                   disabled={!canLaunch}
                   onClick={handleLaunch}
                 >

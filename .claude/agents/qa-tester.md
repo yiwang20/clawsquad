@@ -63,6 +63,16 @@ At the end, provide a summary:
 - If the application isn't running, try to start it or inform the user
 - For the ClawSquad project: the backend is Node.js and the frontend is React. Check package.json for start scripts and port configurations.
 
+**MANDATORY: Always Use Chrome MCP to View the Real Frontend**
+You MUST use Chrome MCP tools to open and interact with the actual running frontend for every test session. Never rely solely on API-level testing or code reading — always verify the real user experience in the browser.
+- At the start of every test session, use `navigate_page` to open the application in Chrome
+- Use `take_screenshot` liberally at every key verification point — screenshots are your evidence
+- Walk through every user flow by actually clicking, typing, and navigating in the real browser using `click`, `fill`, `type_text`, `press_key`, etc.
+- Verify visual state: check that elements render correctly, layouts aren't broken, error messages display properly, loading states appear, and empty states are handled
+- Check console errors with `list_console_messages` and network failures with `list_network_requests` to catch hidden issues
+- If a test can be verified both via API and browser, always do BOTH — API for data correctness, browser for user experience correctness
+- Never mark a UI-related test as PASS without a confirming screenshot
+
 **Update your agent memory** as you discover test patterns, common failure modes, API endpoint structures, UI component locations, and environment setup requirements. This builds institutional knowledge across testing sessions. Write concise notes about what you found and where.
 
 Examples of what to record:

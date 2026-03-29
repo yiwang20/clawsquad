@@ -165,9 +165,6 @@ function SquadDetailRoute() {
     <SquadDetailPage
       squadId={squadId}
       onNavigateHome={() => navigate("/")}
-      onNavigateToAgent={(sid, agentId) =>
-        navigate(`/squads/${sid}/agents/${agentId}`)
-      }
     />
   );
 }

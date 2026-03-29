@@ -1,16 +1,4 @@
-/* ─── Quick-start data (same presets as SquadCreator) ───────────────────────── */
-
-interface QuickStartOption {
-  title: string;
-  agentCount: number;
-  roles: string;
-}
-
-const QUICK_STARTS: QuickStartOption[] = [
-  { title: "Research Squad", agentCount: 3, roles: "Researcher, Analyst, Writer" },
-  { title: "Dev Team", agentCount: 3, roles: "Backend Dev, Frontend Dev, Test Engineer" },
-  { title: "Content Squad", agentCount: 3, roles: "Researcher, Writer, Editor" },
-];
+import { QUICK_STARTS } from "../data/quickStarts";
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 

@@ -57,7 +57,7 @@ export function SquadCard({ squad, onClick }: SquadCardProps) {
         </div>
         <StatusBadge
           status={squad.status}
-          suffix={`(${agentCount})`}
+          suffix={`· ${agentCount} ${agentCount === 1 ? "agent" : "agents"}`}
         />
       </div>
 

@@ -53,7 +53,7 @@ export class ProcessManager extends EventEmitter {
    * Spawn a new AgentProcess for the given agent config and start it immediately.
    * Throws if a process is already running for this agent.
    */
-  spawn(agentId: string, config: AgentConfig): void {
+  spawn(agentId: string, config: AgentConfig, initialPrompt?: string): void {
     if (this.processes.has(agentId)) {
       throw new Error(`Agent ${agentId} already has a running process`);
     }
@@ -66,14 +66,19 @@ export class ProcessManager extends EventEmitter {
     // which fires the "status" event.  The listener in attachListeners() writes the
     // correct status to the DB.  Do NOT write "running" here afterwards — that would
     // overwrite an "error" status emitted by a failed start() (e.g. missing working dir).
-    proc.start();
+    proc.start(initialPrompt);
   }
 
   /**
    * Start (or resume) an agent that is idle or stopped.
    * Looks up the agent config from the database.
+   * An initialPrompt is required to avoid the deadlock where the CLI waits
+   * for stdin input but no prompt is ever delivered.
    */
-  async start(agentId: string): Promise<void> {
+  async start(
+    agentId: string,
+    initialPrompt = "Continue working on your task."
+  ): Promise<void> {
     if (this.processes.has(agentId)) {
       return; // Already running
     }
@@ -100,7 +105,7 @@ export class ProcessManager extends EventEmitter {
     this.processes.set(agentId, proc);
 
     // Same as spawn(): let the "status" event listener handle the DB update.
-    proc.start();
+    proc.start(initialPrompt);
   }
 
   /** Gracefully stop a running agent (SIGTERM). */

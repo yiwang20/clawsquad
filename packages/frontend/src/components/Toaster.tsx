@@ -87,7 +87,7 @@ export function Toaster() {
           position: "fixed",
           bottom: "var(--space-6, 24px)",
           right: "var(--space-6, 24px)",
-          zIndex: 9999,
+          zIndex: 'var(--z-toast)',
           display: "flex",
           flexDirection: "column",
           gap: "var(--space-2, 8px)",

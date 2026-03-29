@@ -227,6 +227,31 @@ describe("SquadManager", () => {
       expect(processManager.spawn).toHaveBeenCalledTimes(squad.agents.length);
     });
 
+    it("passes initialPrompt derived from mission + roleDescription to spawn", async () => {
+      const squad = manager.createSquad(createRequest());
+      await manager.startSquad(squad.id);
+
+      // Backend Dev has roleDescription "APIs and DB"
+      const beAgent = squad.agents.find((a) => a.roleName === "Backend Dev")!;
+      expect(processManager.spawn).toHaveBeenCalledWith(
+        beAgent.id,
+        expect.anything(),
+        "Build the next web app\n\nYour focus: APIs and DB"
+      );
+
+      // Frontend Dev has no roleDescription — prompt is just the mission
+      const feAgent = squad.agents.find((a) => a.roleName === "Frontend Dev")!;
+      expect(processManager.spawn).toHaveBeenCalledWith(
+        feAgent.id,
+        expect.anything(),
+        "Build the next web app"
+      );
+    });
+
+    it("throws for unknown squad", async () => {
+      await expect(manager.startSquad("nonexistent")).rejects.toThrow();
+    });
+
     it("throws for empty squad", async () => {
       // Can't have empty squad via createSquad, so test via direct DB manipulation
       const squad = manager.createSquad(createRequest({ agents: [{ roleName: "Dev" }] }));

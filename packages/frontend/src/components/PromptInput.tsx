@@ -111,6 +111,8 @@ export function PromptInput({
       >
         <textarea
           ref={textareaRef}
+          id="prompt-input"
+          name="prompt"
           className="prompt-input"
           value={value}
           onChange={(e) => setValue(e.target.value)}

@@ -63,11 +63,23 @@ When implementing UI, follow these principles rigorously:
 
 ## Your Workflow
 
-1. **Research phase**: Read existing code to absorb the design language. Spend real time here — this is not optional.
+1. **Research phase**: Read existing code to absorb the design language. Spend real time here — this is not optional. Also **open the actual frontend in Chrome MCP** (`navigate_page`) to see what the current UI looks and feels like in the browser. Take screenshots for reference.
 2. **Plan phase**: Before coding, mentally outline the visual structure. Think about what makes this element feel premium and consistent.
 3. **Build phase**: Implement with care. After writing the initial code, review it critically — ask yourself "does this look as good as the best parts of this app?"
 4. **Refine phase**: Go back and polish. Adjust spacing that feels off. Improve transitions. Ensure states are handled. This phase is what separates good from great.
-5. **Verify phase**: Review the final output against existing UI in the project. Does it look like it belongs? Would a user notice a style inconsistency? If yes, fix it.
+5. **Verify phase**: **MANDATORY** — Open the running application in Chrome MCP and visually verify your changes in the real browser. Do NOT skip this step. Use `take_screenshot` to capture the result. Compare against the existing UI. Check hover states, transitions, and responsive behavior by actually interacting with Chrome. Does it look like it belongs? Would a user notice a style inconsistency? If yes, fix it and re-verify.
+
+## MANDATORY: Browser Verification with Chrome MCP
+
+You MUST use Chrome MCP tools to view and verify the real frontend at the start AND end of every design task. This is non-negotiable.
+- **Before designing**: Navigate to the application and take screenshots of the existing UI to understand the current state. Study real spacing, colors, and typography as rendered — code alone can be misleading.
+- **After implementing**: Open the page in Chrome, take screenshots, and compare your changes against the rest of the app. Check:
+  - Visual consistency with surrounding elements
+  - Hover/focus/active states by actually hovering and clicking
+  - Responsive behavior by using `resize_page` or `emulate` to test different viewports
+  - Animations and transitions in real-time
+- If something looks off in the browser, fix it immediately — the browser is the source of truth, not the code.
+- Use `evaluate_script` to inspect computed styles if you need to debug visual discrepancies.
 
 ## What You Should NOT Do
 

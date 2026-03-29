@@ -164,6 +164,11 @@
   pointer-events: none;
 }
 
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-blue-500);
+}
+
 /* Primary — blue, high-contrast CTA */
 .btn-primary {
   color: #fff;
@@ -225,23 +230,6 @@
 .btn-ghost:hover {
   color: var(--color-text-primary);
   background-color: var(--color-bg-hover);
-}
-
-/* Success — green, for start/launch actions */
-.btn-success {
-  color: #fff;
-  background-color: var(--color-green-600);
-  border-color: var(--color-green-600);
-}
-
-.btn-success:hover {
-  background-color: var(--color-green-500);
-  border-color: var(--color-green-500);
-  box-shadow: var(--shadow-glow-green);
-}
-
-.btn-success:active {
-  background-color: var(--color-green-600);
 }
 
 /* Size variants */
@@ -466,6 +454,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-surface);
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
   transition:
     border-color var(--duration-normal) var(--ease-default),
     box-shadow var(--duration-normal) var(--ease-default);
@@ -861,89 +850,6 @@
   color: var(--color-text-disabled);
   text-align: center;
   padding: var(--space-3);
-}
-
-/* Action buttons alongside the prompt textarea */
-.prompt-actions {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: var(--space-1.5);
-  flex-shrink: 0;
-}
-
-/* Send button — blue accent, matches primary */
-.prompt-send-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: none;
-  border-radius: var(--radius-md);
-  background-color: var(--color-blue-600);
-  color: #fff;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default),
-    opacity var(--duration-fast) var(--ease-default);
-}
-
-.prompt-send-btn:hover {
-  background-color: var(--color-blue-500);
-  box-shadow: var(--shadow-glow-blue);
-}
-
-.prompt-send-btn:active {
-  background-color: var(--color-blue-600);
-}
-
-.prompt-send-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Abort button — red/danger style, visible only while agent is running */
-.prompt-abort-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 1px solid var(--color-red-600);
-  border-radius: var(--radius-md);
-  background-color: transparent;
-  color: var(--color-red-400);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
-}
-
-.prompt-abort-btn:hover {
-  background-color: var(--color-red-600);
-  color: #fff;
-  box-shadow: var(--shadow-glow-red);
-}
-
-.prompt-abort-btn:active {
-  background-color: var(--color-red-500);
-}
-
-/* Disabled prompt container — overlay with explanation */
-.prompt-input-disabled-overlay {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--color-bg-surface);
-  border-top: 1px solid var(--color-border-default);
-  color: var(--color-text-disabled);
-  font-size: var(--text-xs);
-  gap: var(--space-2);
 }
 
 /* ─── Empty State ─────────────────────────────────────────────────────────────

@@ -6,12 +6,14 @@ import type {
   CreateSquadRequest,
   AgentStatus,
   SquadStatus,
+  PaginatedMessagesResponse,
 } from "@clawsquad/shared";
 import {
   SQUADS_PATH,
   AGENTS_PATH,
   MAX_OUTPUT_BUFFER_SIZE,
 } from "@clawsquad/shared";
+import { toast } from "./toastStore";
 
 /* ─── Store shape ───────────────────────────────────────────────────────────── */
 
@@ -27,6 +29,7 @@ export interface SquadStoreState {
   // Data fetching
   fetchSquads(): Promise<void>;
   fetchSquad(squadId: string): Promise<Squad>;
+  fetchAgentMessages(agentId: string): Promise<void>;
 
   // Squad actions
   createSquad(req: CreateSquadRequest): Promise<Squad>;
@@ -162,6 +165,31 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
     return squad;
   },
 
+  async fetchAgentMessages(agentId: string) {
+    const result = await apiFetch<PaginatedMessagesResponse>(
+      `${AGENTS_PATH}/${agentId}/messages?pageSize=200`,
+    );
+    const fetchedIds = new Set(result.messages.map((m) => m.id));
+    const messages: StreamMessage[] = result.messages.map((m) => {
+      try {
+        const parsed = JSON.parse(m.content) as StreamMessage;
+        return { ...parsed, _storedId: m.id };
+      } catch {
+        return { type: m.type, _storedId: m.id } as StreamMessage;
+      }
+    });
+    // Read current buffer state *at commit time* (not at fetch-start time) to
+    // avoid overwriting WS messages that arrived while the REST call was in-flight.
+    set((state) => {
+      const outputBuffers = new Map(state.outputBuffers);
+      const existing = outputBuffers.get(agentId) ?? [];
+      // Keep only live WS messages not already covered by the fetched history.
+      const liveOnly = existing.filter((m) => !fetchedIds.has(m._storedId as number));
+      outputBuffers.set(agentId, [...messages, ...liveOnly]);
+      return { outputBuffers };
+    });
+  },
+
   /* ── Squad actions ───────────────────────────────────────────────────── */
 
   async createSquad(req: CreateSquadRequest) {
@@ -238,12 +266,22 @@ export const useSquadStore = create<SquadStoreState>((set, get) => ({
   sendPrompt(agentId: string, prompt: string) {
     if (wsSend) {
       wsSend(JSON.stringify({ type: "agent:prompt", agentId, prompt }));
+    } else {
+      // WebSocket disconnected — fall back to REST
+      apiFetch(`${AGENTS_PATH}/${agentId}/prompt`, {
+        method: "POST",
+        body: JSON.stringify({ prompt }),
+      }).catch(() => {
+        toast.error("Failed to send prompt — connection lost");
+      });
     }
   },
 
   abortAgent(agentId: string) {
     if (wsSend) {
       wsSend(JSON.stringify({ type: "agent:abort", agentId }));
+    } else {
+      toast.error("Cannot abort — connection lost. Reconnecting…");
     }
   },
 

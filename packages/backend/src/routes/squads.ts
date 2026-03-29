@@ -17,6 +17,15 @@ export function createSquadsRouter(squadManager: SquadManager): Router {
       res.status(400).json({ error: "name is required" });
       return;
     }
+    const name = body.name.trim();
+    if (!name) {
+      res.status(400).json({ error: "Squad name cannot be empty" });
+      return;
+    }
+    if (name.length > 60) {
+      res.status(400).json({ error: "name must be 60 characters or less" });
+      return;
+    }
     if (!body.mission || typeof body.mission !== "string") {
       res.status(400).json({ error: "mission is required" });
       return;
@@ -32,6 +41,10 @@ export function createSquadsRouter(squadManager: SquadManager): Router {
     for (const agent of body.agents) {
       if (!agent.roleName || typeof agent.roleName !== "string") {
         res.status(400).json({ error: "each agent must have a roleName" });
+        return;
+      }
+      if (agent.roleName.trim().length > 60) {
+        res.status(400).json({ error: "roleName must be 60 characters or less" });
         return;
       }
     }
@@ -74,6 +87,21 @@ export function createSquadsRouter(squadManager: SquadManager): Router {
   // PATCH /api/squads/:id — update squad metadata
   router.patch("/:id", (req: Request, res: Response) => {
     const body = req.body as UpdateSquadRequest;
+    if (body.name !== undefined) {
+      if (typeof body.name !== "string") {
+        res.status(400).json({ error: "name must be a string" });
+        return;
+      }
+      const patchedName = body.name.trim();
+      if (!patchedName) {
+        res.status(400).json({ error: "Squad name cannot be empty" });
+        return;
+      }
+      if (patchedName.length > 60) {
+        res.status(400).json({ error: "name must be 60 characters or less" });
+        return;
+      }
+    }
     try {
       const squad = squadManager.updateSquad(req.params["id"] as string, body);
       if (!squad) {
@@ -143,6 +171,15 @@ export function createSquadsRouter(squadManager: SquadManager): Router {
 
     if (!body.roleName || typeof body.roleName !== "string") {
       res.status(400).json({ error: "roleName is required" });
+      return;
+    }
+    const roleName = body.roleName.trim();
+    if (!roleName) {
+      res.status(400).json({ error: "Agent role name cannot be empty" });
+      return;
+    }
+    if (roleName.length > 60) {
+      res.status(400).json({ error: "roleName must be 60 characters or less" });
       return;
     }
 

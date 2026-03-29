@@ -38,7 +38,12 @@ export function HomePage({ onNavigateToSquad }: HomePageProps) {
   const handleLaunch = useCallback(
     async (req: CreateSquadRequest) => {
       const squad = await createSquad(req);
-      await startSquad(squad.id);
+      // Best-effort start — if it fails the user can retry from the squad detail page
+      try {
+        await startSquad(squad.id);
+      } catch {
+        toast.error("Squad created but failed to start. You can start it manually.");
+      }
       setShowCreator(false);
       onNavigateToSquad(squad.id);
     },
@@ -53,9 +58,10 @@ export function HomePage({ onNavigateToSquad }: HomePageProps) {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (isFetching && squads.size === 0) {
     return (
-      <div className="main" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
-        <div style={{ color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)" }}>
-          Loading…
+      <div className="main">
+        <div className="loading-state">
+          <div className="loading-state-spinner" />
+          <span>Loading squads…</span>
         </div>
       </div>
     );
@@ -79,6 +85,7 @@ export function HomePage({ onNavigateToSquad }: HomePageProps) {
             setShowCreator(false);
             setQuickStartHint(null);
           }}
+          quickStartHint={quickStartHint}
         />
       </div>
     );

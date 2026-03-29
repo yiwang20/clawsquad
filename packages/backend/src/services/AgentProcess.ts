@@ -214,7 +214,7 @@ export class AgentProcess extends EventEmitter {
       this.emit("error", "Cannot write to stdin — process not running");
       return;
     }
-    const payload = JSON.stringify({ type: "user", content: prompt }) + "\n";
+    const payload = JSON.stringify({ type: "user", message: { role: "user", content: prompt } }) + "\n";
     this.proc.stdin.write(payload);
     this.setStatus("running");
   }

@@ -11,7 +11,6 @@ import { StatusBadge } from "../components/StatusBadge";
 interface SquadDetailPageProps {
   squadId: string;
   onNavigateHome: () => void;
-  onNavigateToAgent: (squadId: string, agentId: string) => void;
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
@@ -19,7 +18,6 @@ interface SquadDetailPageProps {
 export function SquadDetailPage({
   squadId,
   onNavigateHome,
-  onNavigateToAgent,
 }: SquadDetailPageProps) {
   const squad = useSquadStore((s) => s.squads.get(squadId));
   const agents = useSquadStore((s) => s.agents);
@@ -29,6 +27,8 @@ export function SquadDetailPage({
   const startSquad = useSquadStore((s) => s.startSquad);
   const stopSquad = useSquadStore((s) => s.stopSquad);
   const deleteSquad = useSquadStore((s) => s.deleteSquad);
+  const startAgent = useSquadStore((s) => s.startAgent);
+  const fetchAgentMessages = useSquadStore((s) => s.fetchAgentMessages);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -49,6 +49,28 @@ export function SquadDetailPage({
       }
     });
   }, [fetchSquad, fetchSquads, squadId]);
+
+  // Fetch output messages for each agent so AgentCard previews are populated.
+  // Only fetch for agents whose buffer is not yet loaded.
+  useEffect(() => {
+    if (!squad) return;
+    for (const agent of squad.agents) {
+      const buf = outputBuffers.get(agent.id);
+      // Fetch if buffer doesn't exist OR is empty (e.g. WS created an empty entry)
+      if (!buf || buf.length === 0) {
+        fetchAgentMessages(agent.id).catch(() => {});
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squad?.id, fetchAgentMessages]);
+
+  // Poll squad + agent statuses every 5 seconds as fallback for missed WS events
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSquad(squadId).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [squadId, fetchSquad]);
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const handleStart = useCallback(async () => {
@@ -120,7 +142,7 @@ export function SquadDetailPage({
     .sort((a, b) => a.roleName.localeCompare(b.roleName));
 
   const canStartStatus =
-    squad.status === "ready" || squad.status === "stopped";
+    squad.status === "ready" || squad.status === "stopped" || squad.status === "error";
   const canStart = canStartStatus && squadAgents.length > 0;
   const canStop =
     squad.status === "running" || squad.status === "active";
@@ -154,7 +176,7 @@ export function SquadDetailPage({
             <h1 className="page-title">{squad.name}</h1>
             <StatusBadge
               status={squad.status}
-              suffix={`(${squadAgents.length})`}
+              suffix={`· ${squadAgents.length} ${squadAgents.length === 1 ? "agent" : "agents"}`}
             />
           </div>
           <p className="squad-detail-mission" style={{ marginTop: "var(--space-2)" }}>
@@ -166,7 +188,7 @@ export function SquadDetailPage({
           {canStartStatus && (
             <button
               type="button"
-              className="btn btn-success"
+              className="btn btn-primary"
               disabled={actionLoading !== null || !canStart}
               title={squadAgents.length === 0 ? "Add agents before starting the squad" : undefined}
               onClick={handleStart}
@@ -228,7 +250,7 @@ export function SquadDetailPage({
           </svg>
           <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>No agents yet</div>
           <div style={{ fontSize: "var(--text-sm)", maxWidth: "24rem" }}>
-            This squad has no agents. Add agents via the API or delete this squad and recreate it with agents.
+            This squad has no agents. Delete and recreate to add agents.
           </div>
         </div>
       ) : (
@@ -240,7 +262,7 @@ export function SquadDetailPage({
                 key={agent.id}
                 agent={agent}
                 {...(msgs !== undefined && { outputMessages: msgs })}
-                onClick={onNavigateToAgent}
+                onRestart={startAgent}
               />
             );
           })}
